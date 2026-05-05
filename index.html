@@ -1,0 +1,1227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stock Report Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root {
+    /* Default Dark Theme Variables */
+    --bg: #0a0c0f;
+    --surface: #111418;
+    --surface2: #181c22;
+    --border: #252b35;
+    --accent: #00e5a0;
+    --accent2: #0094ff;
+    --accent3: #ff6b35;
+    --warn: #ffa94d;
+    --text: #e8edf5;
+    --muted: #5a6478;
+    --tag-bg: #1a2535;
+    --logo-filter: none;
+  }
+
+  [data-theme="light"] {
+    /* Light Theme Variables */
+    --bg: #f8fafc;
+    --surface: #ffffff;
+    --surface2: #f1f5f9;
+    --border: #e2e8f0;
+    --accent: #059669; 
+    --accent2: #2563eb;
+    --accent3: #ea580c;
+    --warn: #d97706;
+    --text: #0f172a;
+    --muted: #64748b;
+    --tag-bg: #e2e8f0;
+    --logo-filter: invert(1) brightness(0.2); 
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    min-height: 100vh;
+    overflow-x: hidden;
+    transition: background-color 0.3s, color 0.3s;
+  }
+
+  /* SECURITY OVERLAY */
+  .login-overlay {
+    position: fixed;
+    inset: 0;
+    background: #0a0c0f; 
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+  }
+  .login-box {
+    background: #111418;
+    border: 1px solid #252b35;
+    border-radius: 14px;
+    padding: 40px 30px;
+    width: 90%;
+    max-width: 400px;
+    text-align: center;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+    animation: fadeIn 0.4s ease-out;
+  }
+  .login-box img {
+    height: 50px;
+    margin-bottom: 25px;
+  }
+  .login-box h2 {
+    color: #ffffff;
+    margin-bottom: 10px;
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+  }
+  .login-box p {
+    color: #5a6478;
+    font-size: 13px;
+    margin-bottom: 24px;
+  }
+  .login-box input {
+    width: 100%;
+    background: #0a0c0f;
+    border: 1.5px solid #252b35;
+    color: #e8edf5;
+    padding: 14px 20px;
+    border-radius: 12px;
+    outline: none;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    margin-bottom: 15px;
+    text-align: center;
+    transition: border-color 0.2s;
+  }
+  .login-box input:focus {
+    border-color: #00e5a0;
+    box-shadow: 0 0 0 3px rgba(0,229,160,0.1);
+  }
+  .login-btn-submit {
+    background: linear-gradient(135deg, rgba(0,229,160,0.15), rgba(0,148,255,0.1));
+    border: 1.5px solid rgba(0,229,160,0.4);
+    color: #00e5a0;
+    border-radius: 12px;
+    padding: 14px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    width: 100%;
+    transition: all 0.2s;
+  }
+  .login-btn-submit:hover {
+    background: rgba(0,229,160,0.25);
+    box-shadow: 0 0 16px rgba(0,229,160,0.2);
+  }
+  .error-msg {
+    color: #ff6b35;
+    font-size: 12px;
+    margin-top: 15px;
+    display: none;
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* MAIN APP WRAPPER */
+  #appContent {
+    display: none; 
+  }
+
+  /* HEADER */
+  .header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 20px 36px 16px;
+    position: relative;
+    overflow: hidden;
+    transition: background-color 0.3s, border-color 0.3s;
+  }
+  .header-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .logo-container img {
+    height: 42px;
+    display: block;
+    filter: var(--logo-filter);
+    transition: filter 0.3s;
+  }
+  .brand-text h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: 20px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    color: var(--text);
+  }
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .meta-tag {
+    background: var(--tag-bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 7px 14px;
+    font-size: 12px;
+    color: var(--muted);
+    letter-spacing: 0.4px;
+    white-space: nowrap;
+  }
+  .meta-tag span { color: var(--accent); font-weight: 600; }
+  
+  /* THEME TOGGLE BUTTON */
+  .theme-btn {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 8px;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 16px;
+  }
+  .theme-btn:hover {
+    border-color: var(--accent);
+  }
+
+  /* UPLOAD PANEL */
+  .upload-bar {
+    padding: 0 36px;
+    position: relative;
+  }
+  .upload-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-top: none;
+    border-radius: 0 0 14px 14px;
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+    transition: background-color 0.3s, border-color 0.3s;
+  }
+  .upload-label {
+    font-family: 'Syne', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+  .upload-divider {
+    width: 1px; height: 28px;
+    background: var(--border);
+    flex-shrink: 0;
+  }
+
+  /* Custom Upload Button Styling */
+  .upload-btn-wrap {
+    position: relative;
+    display: inline-block;
+  }
+  
+  .file-input-hidden {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+    z-index: 2;
+    width: 100%;
+    height: 100%;
+  }
+
+  .upload-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    background: linear-gradient(135deg, rgba(0,229,160,0.12), rgba(0,148,255,0.08));
+    border: 1.5px solid rgba(0,229,160,0.35);
+    border-radius: 8px;
+    padding: 9px 16px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--accent);
+    cursor: pointer;
+    transition: all 0.18s;
+    white-space: nowrap;
+    position: relative;
+    z-index: 1;
+  }
+  
+  .upload-btn.weekly {
+    background: linear-gradient(135deg, rgba(255,107,53,0.12), rgba(255,107,53,0.05));
+    border-color: rgba(255,107,53,0.35);
+    color: var(--accent3);
+  }
+
+  .upload-btn-wrap:hover .upload-btn {
+    background: rgba(0,229,160,0.18);
+    border-color: var(--accent);
+    box-shadow: 0 0 16px rgba(0,229,160,0.15);
+  }
+  
+  .upload-btn-wrap:hover .upload-btn.weekly {
+    background: rgba(255,107,53,0.18);
+    border-color: var(--accent3);
+    box-shadow: 0 0 16px rgba(255,107,53,0.15);
+  }
+
+  .sunday-warning {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    background: rgba(255,169,77,0.08);
+    border: 1px solid rgba(255,169,77,0.25);
+    border-radius: 8px;
+    padding: 7px 13px;
+    font-size: 11px;
+    color: var(--warn);
+    display: none;
+  }
+
+  /* SEARCH SECTION */
+  .search-section {
+    padding: 28px 36px 0;
+    display: flex;
+    justify-content: center;
+  }
+  .search-wrapper {
+    position: relative;
+    width: 100%;
+    max-width: 900px;
+    display: flex;
+    gap: 10px;
+  }
+  .search-icon {
+    position: absolute;
+    left: 18px; top: 50%;
+    transform: translateY(-50%);
+    color: var(--muted);
+    font-size: 16px;
+    pointer-events: none;
+    z-index: 2;
+  }
+  .search-input-field {
+    flex-grow: 1;
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: 12px;
+    padding: 15px 56px 15px 50px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s, background-color 0.3s, color 0.3s;
+  }
+  .search-input-field::placeholder { color: var(--muted); }
+  .search-input-field:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(0,229,160,0.08);
+  }
+  .search-btn {
+    background: linear-gradient(135deg, rgba(0,229,160,0.12), rgba(0,148,255,0.08));
+    border: 1.5px solid rgba(0,229,160,0.35);
+    color: var(--accent);
+    border-radius: 12px;
+    padding: 0 24px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .search-btn:hover {
+    background: rgba(0,229,160,0.18);
+    border-color: var(--accent);
+    box-shadow: 0 0 16px rgba(0,229,160,0.15);
+  }
+
+  /* Show All Button */
+  .show-all-btn {
+    background: transparent;
+    border: 1.5px solid var(--border);
+    color: var(--text);
+    border-radius: 12px;
+    padding: 0 24px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .show-all-btn:hover {
+    border-color: var(--text);
+    background: var(--surface2);
+  }
+
+  /* MAIN CONTENT & PANELS */
+  .main {
+    padding: 28px 36px 60px;
+  }
+  .dashboard-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+  .panel {
+    background: var(--surface);
+    border-radius: 14px;
+    border: 1px solid var(--border);
+    overflow: hidden;
+    transition: background-color 0.3s, border-color 0.3s;
+  }
+  .panel-header {
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    transition: background-color 0.3s, border-color 0.3s;
+  }
+  .panel-header-flex {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 15px;
+  }
+  .panel-header h2 {
+    font-family: 'Syne', sans-serif;
+    font-size: 16px;
+    font-weight: 700;
+    margin: 0;
+    color: var(--text);
+  }
+
+  /* UPCOMING STOCK TABS */
+  #upcomingPanelWrapper {
+    background-color: var(--surface);
+    border-top: 3px solid var(--accent); 
+  }
+  
+  /* EXPIRED PANEL SPECIFIC */
+  #expiredPanelWrapper {
+    background-color: var(--surface);
+    border-top: 3px solid var(--accent3); 
+  }
+
+  .tabs-header {
+    display: flex;
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+  }
+  .tabs-header::-webkit-scrollbar {
+    height: 4px;
+  }
+  .tab-btn {
+    background: transparent;
+    border: none;
+    color: var(--muted);
+    padding: 14px 24px;
+    font-family: 'Syne', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    white-space: nowrap;
+    transition: all 0.2s;
+  }
+  .tab-btn:hover {
+    color: var(--text);
+    background: rgba(0,0,0,0.05);
+  }
+  [data-theme="dark"] .tab-btn:hover {
+    background: rgba(255,255,255,0.02);
+  }
+  .tab-btn.active {
+    color: var(--accent);
+    border-bottom: 2px solid var(--accent);
+    background: var(--surface);
+  }
+  
+  .tab-content {
+    display: none;
+    padding: 0;
+  }
+  .tab-content.active {
+    display: block;
+    animation: fadeIn 0.3s ease;
+  }
+
+  /* TABLES */
+  .table-container {
+    overflow-x: auto;
+    max-height: 600px;
+  }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th {
+    text-align: left;
+    padding: 12px 20px;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--muted);
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    position: sticky; top: 0;
+    transition: background-color 0.3s, border-color 0.3s;
+  }
+  .month-subpanel th { background: var(--bg); }
+  td {
+    padding: 12px 20px;
+    border-bottom: 1px solid rgba(37,43,53,0.6);
+    color: var(--text);
+    white-space: nowrap;
+    transition: border-color 0.3s;
+  }
+  [data-theme="light"] td {
+    border-bottom: 1px solid var(--border);
+  }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--surface2); }
+
+  .empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--muted);
+    font-size: 13px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  /* SCROLLBAR */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<!-- SECURITY PROTOCOL OVERLAY -->
+<div class="login-overlay" id="loginOverlay">
+  <div class="login-box">
+    <img src="https://fitfuel.ae/wp-content/uploads/2024/12/Fitfuel-white-Logo-300x126.png" alt="FitFuel Logo">
+    <h2>Security Protocol</h2>
+    <p>Please authenticate to access the database.</p>
+    <input type="password" id="passwordInput" placeholder="Enter password...">
+    <button id="loginBtn" class="login-btn-submit">Access Database</button>
+    <div id="loginError" class="error-msg">Incorrect password. Access Denied.</div>
+  </div>
+</div>
+
+<!-- MAIN DASHBOARD CONTENT -->
+<div id="appContent">
+  <div class="header">
+    <div class="header-top">
+      <div class="brand">
+        <div class="logo-container">
+          <img src="https://fitfuel.ae/wp-content/uploads/2024/12/Fitfuel-white-Logo-300x126.png" alt="FitFuel Logo">
+        </div>
+        <div class="brand-text">
+          <h1>Inventory Dashboard</h1>
+        </div>
+      </div>
+      <div class="header-right">
+        <div class="meta-tag" id="lastUpdatedBadge">Last Updated: <span id="lastUpdatedDate">—</span></div>
+        <button id="themeToggle" class="theme-btn" title="Toggle Light/Dark Theme">☀️</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Upload Bar -->
+  <div class="upload-bar">
+    <div class="upload-panel">
+      <div class="upload-label">📁 Daily Update</div>
+      <div class="upload-divider"></div>
+
+      <div class="upload-btn-wrap" id="uploadBtnWrap">
+        <input type="file" id="excelFileInput" class="file-input-hidden" accept=".xlsx,.xls">
+        <div class="upload-btn" id="uploadBtn">
+          ↑ Upload Daily Report (.xlsx)
+        </div>
+      </div>
+
+      <div class="sunday-warning" id="sundayWarning">
+        🚫 Uploads are disabled on Sundays
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Search -->
+  <div class="search-section">
+    <div class="search-wrapper">
+      <div class="search-icon">🔍</div>
+      <input type="text" id="searchInput" class="search-input-field" placeholder="Search product particulars...">
+      <button class="search-btn" id="searchButton">Search</button>
+      <button class="show-all-btn" id="showAllButton">Show All</button>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="dashboard-grid">
+      
+      <!-- 1. Main Search Panel -->
+      <div class="panel">
+        <div class="panel-header">
+          <h2>Product Database</h2>
+        </div>
+        <div class="table-container" id="mainTableContainer">
+          <div class="empty-state">No data available. Please upload a daily file.</div>
+        </div>
+      </div>
+
+      <!-- 2. Upcoming Months Panel (Tabbed & Collapsible) -->
+      <div class="panel" id="upcomingPanelWrapper">
+        <div class="panel-header panel-header-flex">
+          <h2>Upcoming Stock</h2>
+          <button id="toggleUpcomingBtn" class="show-all-btn" style="padding: 6px 16px; font-size: 12px;">Expand</button>
+        </div>
+        <!-- Collapsible Content Wrapper -->
+        <div id="upcomingContentWrapper" style="display: none;">
+          <div id="upcomingTableContainer">
+            <div class="empty-state" style="padding: 40px;">No data available. Please upload a daily file.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. Expired Location Panel -->
+      <div class="panel" id="expiredPanelWrapper">
+        <div class="panel-header panel-header-flex">
+          <div style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
+            <h2>Expired Location</h2>
+            <div class="meta-tag" style="padding: 4px 10px; font-size: 11px;">Updated: <span id="expiredLastUpdatedDate">—</span></div>
+          </div>
+          <div class="upload-btn-wrap">
+            <input type="file" id="expiredFileInput" class="file-input-hidden" accept=".xlsx,.xls">
+            <div class="upload-btn weekly">
+              ↑ Upload Weekly Expired Report
+            </div>
+          </div>
+        </div>
+        
+        <div style="padding: 24px 24px 0;">
+          <div class="search-wrapper" style="max-width: 100%;">
+            <div class="search-icon">🔍</div>
+            <input type="text" id="expiredSearchInput" class="search-input-field" placeholder="Search expired location products...">
+            <button class="search-btn" id="expiredSearchButton" style="border-color: var(--accent3); color: var(--accent3);">Search</button>
+            <button class="show-all-btn" id="expiredShowAllButton">Show All</button>
+          </div>
+        </div>
+
+        <div class="table-container" id="expiredTableContainer" style="padding: 24px;">
+          <div class="empty-state">No expired stock data available. Please upload the weekly report.</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+    // ==========================================
+    // SECURITY UTILITIES (XSS PREVENTION)
+    // ==========================================
+    function escapeHTML(str) {
+        if (str === null || str === undefined) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
+    // ==========================================
+    // SECURITY PROTOCOL (PASSWORD HASHING)
+    // ==========================================
+    const loginOverlay = document.getElementById('loginOverlay');
+    const appContent = document.getElementById('appContent');
+    const passwordInput = document.getElementById('passwordInput');
+    const loginBtn = document.getElementById('loginBtn');
+    const loginError = document.getElementById('loginError');
+
+    // Check if session is already authenticated
+    if(sessionStorage.getItem('authenticated') === 'true') {
+        loginOverlay.style.display = 'none';
+        appContent.style.display = 'block';
+    }
+
+    async function handleLogin() {
+        const pass = passwordInput.value;
+        
+        // Ensure browser supports crypto API
+        if (!crypto || !crypto.subtle) {
+            // Fallback for non-secure contexts (e.g. some file:// protocol environments)
+            // Note: This bypasses the hash requirement ONLY if the browser outright restricts cryptography locally.
+            if(pass === '6713592') {
+                sessionStorage.setItem('authenticated', 'true');
+                loginOverlay.style.display = 'none';
+                appContent.style.display = 'block';
+                return;
+            } else {
+                loginError.style.display = 'block';
+                return;
+            }
+        }
+
+        // Securely hash the password input
+        try {
+            const msgBuffer = new TextEncoder().encode(pass);
+            const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+
+            // Correct SHA-256 hash of "6713592"
+            if(hashHex === '3bca09d9dc313f9c077668d500ee1354fd9dd8085fc823bda7967fe4551db9a4') {
+                sessionStorage.setItem('authenticated', 'true');
+                loginOverlay.style.display = 'none';
+                appContent.style.display = 'block';
+            } else {
+                loginError.style.display = 'block';
+            }
+        } catch (e) {
+            console.error("Crypto API Failed", e);
+            loginError.innerText = "Security module failed to load. Try running via localhost or HTTPS.";
+            loginError.style.display = 'block';
+        }
+    }
+
+    loginBtn.addEventListener('click', handleLogin);
+    passwordInput.addEventListener('keypress', function(e) {
+        if(e.key === 'Enter') {
+            handleLogin();
+        }
+    });
+
+    // --- THEME TOGGLE LOGIC ---
+    const themeToggle = document.getElementById('themeToggle');
+    const currentTheme = localStorage.getItem('theme') || 'dark';
+    
+    // Set initial theme
+    document.documentElement.setAttribute('data-theme', currentTheme);
+    themeToggle.innerText = currentTheme === 'dark' ? '☀️' : '🌙';
+
+    themeToggle.addEventListener('click', () => {
+        let theme = document.documentElement.getAttribute('data-theme');
+        let newTheme = theme === 'dark' ? 'light' : 'dark';
+        
+        document.documentElement.setAttribute('data-theme', newTheme);
+        localStorage.setItem('theme', newTheme);
+        themeToggle.innerText = newTheme === 'dark' ? '☀️' : '🌙';
+    });
+
+    // --- COLLAPSE/EXPAND LOGIC FOR UPCOMING STOCK ---
+    const toggleUpcomingBtn = document.getElementById('toggleUpcomingBtn');
+    const upcomingContentWrapper = document.getElementById('upcomingContentWrapper');
+
+    toggleUpcomingBtn.addEventListener('click', () => {
+        if (upcomingContentWrapper.style.display === 'none') {
+            upcomingContentWrapper.style.display = 'block';
+            toggleUpcomingBtn.innerText = 'Collapse';
+        } else {
+            upcomingContentWrapper.style.display = 'none';
+            toggleUpcomingBtn.innerText = 'Expand';
+        }
+    });
+
+    // --- GLOBALS FOR MAIN DATA ---
+    let globalHeaders = [];
+    let globalData = [];
+
+    const upcomingMonthsColumns = [
+        "FF - MAY 26", 
+        "FF - JUNE 26", 
+        "FF - JULY 26", 
+        "FF - AUG 26", 
+        "FF - SEP 26"
+    ];
+
+    // --- GLOBALS FOR EXPIRED DATA ---
+    let expiredHeaders = [];
+    let expiredData = [];
+
+    // ==========================================
+    // 1. MAIN DAILY FILE UPLOAD & PROCESSING
+    // ==========================================
+    document.getElementById('excelFileInput').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const today = new Date();
+        if (today.getDay() === 0) { 
+            document.getElementById('sundayWarning').style.display = 'flex';
+            e.target.value = ''; 
+            return;
+        } else {
+             document.getElementById('sundayWarning').style.display = 'none';
+        }
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, {type: 'array'});
+            const firstSheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[firstSheetName];
+            const rows = XLSX.utils.sheet_to_json(worksheet, {header: 1});
+            
+            processData(rows, true); 
+        };
+        reader.readAsArrayBuffer(file);
+    });
+
+    function processData(rows, isNewUpload) {
+        let headerIndex = -1;
+        for (let i = 0; i < rows.length; i++) {
+            if (rows[i] && rows[i].includes('Particulars')) {
+                headerIndex = i;
+                break;
+            }
+        }
+
+        if (headerIndex === -1) {
+            alert("Could not find the 'Particulars' header in the daily uploaded file.");
+            return;
+        }
+
+        globalHeaders = rows[headerIndex];
+        
+        // Filter out empty rows, map empty/null/blank cells to '0'
+        globalData = rows.slice(headerIndex + 1).filter(row => {
+            const particulars = row[globalHeaders.indexOf('Particulars')];
+            return particulars && String(particulars).trim() !== '' && String(particulars).trim().toLowerCase() !== 'null';
+        }).map(row => {
+            const cleanedRow = [];
+            for (let i = 0; i < globalHeaders.length; i++) {
+                let cellData = row[i];
+                if (cellData === undefined || cellData === null || String(cellData).trim().toLowerCase() === 'null' || String(cellData).trim() === '') {
+                    cleanedRow.push(0);
+                } else {
+                    cleanedRow.push(cellData);
+                }
+            }
+            return cleanedRow;
+        });
+
+        if (isNewUpload) {
+            saveMainToLocalStorage();
+        }
+
+        updateMainTable(''); // Reset view
+        generateUpcomingPanels();
+    }
+
+    // Main Search Handlers
+    function executeSearch() {
+        const searchTerm = document.getElementById('searchInput').value.toLowerCase().trim();
+        updateMainTable(searchTerm, false);
+    }
+    document.getElementById('searchButton').addEventListener('click', executeSearch);
+    document.getElementById('searchInput').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') executeSearch();
+    });
+    document.getElementById('showAllButton').addEventListener('click', function() {
+        document.getElementById('searchInput').value = '';
+        updateMainTable('', true);
+    });
+
+    function updateMainTable(searchTerm, forceShowAll = false) {
+        const container = document.getElementById('mainTableContainer');
+
+        if (globalData.length === 0) {
+            container.innerHTML = `<div class="empty-state">No data available. Please upload a daily file.</div>`;
+            return;
+        }
+
+        if (!searchTerm && !forceShowAll) {
+            container.innerHTML = `<div class="empty-state">Enter a product name and click Search to view results.</div>`;
+            return;
+        }
+
+        const particularsIndex = globalHeaders.indexOf('Particulars');
+        
+        let filteredData = globalData;
+        if (!forceShowAll && searchTerm) {
+            filteredData = globalData.filter(row => {
+                if (row[particularsIndex]) {
+                    return String(row[particularsIndex]).toLowerCase().includes(searchTerm);
+                }
+                return false;
+            });
+        }
+
+        if (filteredData.length === 0) {
+            container.innerHTML = `<div class="empty-state">No matching products found for "${escapeHTML(searchTerm)}".</div>`;
+            return;
+        }
+
+        const totalIndices = [];
+        globalHeaders.forEach((h, idx) => {
+            if (h && String(h).toLowerCase().includes('total')) {
+                totalIndices.push(idx);
+            }
+        });
+
+        let columnsToShow = [];
+
+        for (let colIdx = 0; colIdx < globalHeaders.length; colIdx++) {
+            const header = globalHeaders[colIdx];
+            if (header === undefined) continue;
+
+            if (colIdx === particularsIndex || totalIndices.includes(colIdx)) {
+                columnsToShow.push(colIdx);
+                continue;
+            }
+
+            const hasValue = filteredData.some(row => {
+                const val = row[colIdx];
+                if (val === undefined || val === null) return false;
+                
+                const strVal = String(val).trim().toLowerCase();
+                if (strVal === '' || strVal === '-' || strVal === 'null') return false;
+                
+                if (!isNaN(strVal)) {
+                    return parseFloat(strVal) !== 0; 
+                }
+                return true; 
+            });
+
+            if (hasValue) columnsToShow.push(colIdx);
+        }
+
+        const dynamicHeaders = columnsToShow.map(idx => globalHeaders[idx]);
+        const dynamicData = filteredData.map(row => columnsToShow.map(idx => row[idx]));
+
+        container.innerHTML = buildTableHTML(dynamicHeaders, dynamicData);
+    }
+
+    function generateUpcomingPanels() {
+        const container = document.getElementById('upcomingTableContainer');
+        
+        if (globalData.length === 0) {
+            container.innerHTML = `<div class="empty-state" style="padding: 40px;">No data available. Please upload a daily file.</div>`;
+            return;
+        }
+
+        const particularsIndex = globalHeaders.indexOf('Particulars');
+        let tabsHtml = `<div class="tabs-header">`;
+        let contentHtml = `<div class="tabs-body">`;
+        let isFirstTab = true;
+
+        upcomingMonthsColumns.forEach((monthCol, index) => {
+            const monthIdx = globalHeaders.indexOf(monthCol);
+            if (monthIdx === -1) return;
+
+            const monthData = [];
+            globalData.forEach(row => {
+                let val = row[monthIdx];
+                if (val === undefined || val === null || String(val).trim().toLowerCase() === 'null' || String(val).trim() === '') {
+                    val = 0;
+                } else {
+                    val = String(val).trim();
+                }
+
+                if (val && !isNaN(val) && parseFloat(val) > 0) {
+                    monthData.push([row[particularsIndex], val]);
+                }
+            });
+
+            const cleanTitle = monthCol.replace('FF - ', '');
+            const activeClassBtn = isFirstTab ? 'active' : '';
+            const activeClassContent = isFirstTab ? 'active' : '';
+
+            tabsHtml += `<button class="tab-btn ${activeClassBtn}" onclick="switchTab(event, 'tab-${index}')">${escapeHTML(cleanTitle)}</button>`;
+
+            contentHtml += `<div class="tab-content ${activeClassContent}" id="tab-${index}">`;
+            if (monthData.length > 0) {
+                contentHtml += buildTableHTML(['Product Particulars', 'Stock Amount'], monthData);
+            } else {
+                contentHtml += `<div class="empty-state" style="padding: 40px;">No incoming stock recorded for ${escapeHTML(cleanTitle)}.</div>`;
+            }
+            contentHtml += `</div>`;
+
+            isFirstTab = false;
+        });
+
+        tabsHtml += `</div>`;
+        contentHtml += `</div>`;
+        container.innerHTML = tabsHtml + contentHtml;
+    }
+
+
+    // ==========================================
+    // 2. EXPIRED LOCATION FILE UPLOAD & PROCESSING
+    // ==========================================
+    document.getElementById('expiredFileInput').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, {type: 'array'});
+            const firstSheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[firstSheetName];
+            const rows = XLSX.utils.sheet_to_json(worksheet, {header: 1});
+            
+            processExpiredData(rows, true); 
+        };
+        reader.readAsArrayBuffer(file);
+    });
+
+    function processExpiredData(rows, isNewUpload) {
+        let headerIndex = -1;
+        for (let i = 0; i < rows.length; i++) {
+            if (rows[i] && rows[i].includes('Particulars')) {
+                headerIndex = i;
+                break;
+            }
+        }
+
+        if (headerIndex === -1) {
+            alert("Could not find the 'Particulars' header in the Expired Location file.");
+            return;
+        }
+
+        expiredHeaders = rows[headerIndex];
+        
+        expiredData = rows.slice(headerIndex + 1).filter(row => {
+            const particulars = row[expiredHeaders.indexOf('Particulars')];
+            return particulars && String(particulars).trim() !== '' && String(particulars).trim().toLowerCase() !== 'null';
+        }).map(row => {
+            const cleanedRow = [];
+            for (let i = 0; i < expiredHeaders.length; i++) {
+                let cellData = row[i];
+                if (cellData === undefined || cellData === null || String(cellData).trim().toLowerCase() === 'null' || String(cellData).trim() === '') {
+                    cleanedRow.push(0);
+                } else {
+                    cleanedRow.push(cellData);
+                }
+            }
+            return cleanedRow;
+        });
+
+        if (isNewUpload) {
+            saveExpiredToLocalStorage();
+        }
+
+        updateExpiredTable(''); // Reset view
+    }
+
+    // Expired Search Handlers
+    function executeExpiredSearch() {
+        const searchTerm = document.getElementById('expiredSearchInput').value.toLowerCase().trim();
+        updateExpiredTable(searchTerm, false);
+    }
+    document.getElementById('expiredSearchButton').addEventListener('click', executeExpiredSearch);
+    document.getElementById('expiredSearchInput').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') executeExpiredSearch();
+    });
+    document.getElementById('expiredShowAllButton').addEventListener('click', function() {
+        document.getElementById('expiredSearchInput').value = '';
+        updateExpiredTable('', true);
+    });
+
+    function updateExpiredTable(searchTerm, forceShowAll = false) {
+        const container = document.getElementById('expiredTableContainer');
+
+        if (expiredData.length === 0) {
+            container.innerHTML = `<div class="empty-state">No expired stock data available. Please upload the weekly report.</div>`;
+            return;
+        }
+
+        if (!searchTerm && !forceShowAll) {
+            container.innerHTML = `<div class="empty-state">Enter a product name to search the Expired Location database.</div>`;
+            return;
+        }
+
+        const particularsIndex = expiredHeaders.indexOf('Particulars');
+        
+        let filteredData = expiredData;
+        if (!forceShowAll && searchTerm) {
+            filteredData = expiredData.filter(row => {
+                if (row[particularsIndex]) {
+                    return String(row[particularsIndex]).toLowerCase().includes(searchTerm);
+                }
+                return false;
+            });
+        }
+
+        if (filteredData.length === 0) {
+            container.innerHTML = `<div class="empty-state">No matching expired products found.</div>`;
+            return;
+        }
+
+        const totalIndices = [];
+        expiredHeaders.forEach((h, idx) => {
+            if (h && String(h).toLowerCase().includes('total')) {
+                totalIndices.push(idx);
+            }
+        });
+
+        let columnsToShow = [];
+
+        for (let colIdx = 0; colIdx < expiredHeaders.length; colIdx++) {
+            const header = expiredHeaders[colIdx];
+            if (header === undefined) continue;
+
+            if (colIdx === particularsIndex || totalIndices.includes(colIdx)) {
+                columnsToShow.push(colIdx);
+                continue;
+            }
+
+            const hasValue = filteredData.some(row => {
+                const val = row[colIdx];
+                if (val === undefined || val === null) return false;
+                
+                const strVal = String(val).trim().toLowerCase();
+                if (strVal === '' || strVal === '-' || strVal === 'null') return false;
+                
+                if (!isNaN(strVal)) {
+                    return parseFloat(strVal) !== 0; 
+                }
+                return true; 
+            });
+
+            if (hasValue) columnsToShow.push(colIdx);
+        }
+
+        const dynamicHeaders = columnsToShow.map(idx => expiredHeaders[idx]);
+        const dynamicData = filteredData.map(row => columnsToShow.map(idx => row[idx]));
+
+        container.innerHTML = buildTableHTML(dynamicHeaders, dynamicData);
+    }
+
+    // ==========================================
+    // 3. UTILITIES & MEMORY
+    // ==========================================
+
+    window.switchTab = function(event, tabId) {
+        const tabs = document.querySelectorAll('.tab-btn');
+        tabs.forEach(tab => tab.classList.remove('active'));
+        const contents = document.querySelectorAll('.tab-content');
+        contents.forEach(content => content.classList.remove('active'));
+
+        event.currentTarget.classList.add('active');
+        document.getElementById(tabId).classList.add('active');
+    };
+
+    function buildTableHTML(headers, data) {
+        let tableHtml = '<div class="table-container"><table><thead><tr>';
+        
+        headers.forEach(header => {
+            if (header !== undefined) { 
+                tableHtml += `<th>${escapeHTML(header)}</th>`;
+            }
+        });
+        tableHtml += '</tr></thead><tbody>';
+
+        data.forEach(row => {
+            tableHtml += '<tr>';
+            headers.forEach((header, index) => {
+                if (header !== undefined) {
+                    let cellData = row[index];
+                    if (cellData === undefined || cellData === null || String(cellData).trim().toLowerCase() === 'null' || String(cellData).trim() === '') {
+                        cellData = 0;
+                    }
+                    tableHtml += `<td>${escapeHTML(cellData)}</td>`;
+                }
+            });
+            tableHtml += '</tr>';
+        });
+
+        tableHtml += '</tbody></table></div>';
+        return tableHtml;
+    }
+
+    // Separated Storage Functions
+    function saveMainToLocalStorage() {
+        try {
+            const timestamp = new Date().toLocaleString(undefined, { 
+                weekday: 'short', year: 'numeric', month: 'short', 
+                day: 'numeric', hour: '2-digit', minute: '2-digit' 
+            });
+            localStorage.setItem('inventoryHeaders', JSON.stringify(globalHeaders));
+            localStorage.setItem('inventoryData', JSON.stringify(globalData));
+            localStorage.setItem('inventoryTimestamp', timestamp);
+            document.getElementById('lastUpdatedDate').innerText = timestamp;
+        } catch (error) {
+            console.error("Local storage limit reached.", error);
+        }
+    }
+
+    function saveExpiredToLocalStorage() {
+        try {
+            const timestamp = new Date().toLocaleString(undefined, { 
+                weekday: 'short', year: 'numeric', month: 'short', 
+                day: 'numeric', hour: '2-digit', minute: '2-digit' 
+            });
+            localStorage.setItem('expiredHeaders', JSON.stringify(expiredHeaders));
+            localStorage.setItem('expiredData', JSON.stringify(expiredData));
+            localStorage.setItem('expiredTimestamp', timestamp);
+            document.getElementById('expiredLastUpdatedDate').innerText = timestamp;
+        } catch (error) {
+            console.error("Local storage limit reached for expired data.", error);
+        }
+    }
+
+    function loadFromLocalStorage() {
+        // Load Main Data
+        const savedHeaders = localStorage.getItem('inventoryHeaders');
+        const savedData = localStorage.getItem('inventoryData');
+        const savedTimestamp = localStorage.getItem('inventoryTimestamp');
+
+        if (savedHeaders && savedData) {
+            globalHeaders = JSON.parse(savedHeaders);
+            globalData = JSON.parse(savedData);
+            if (savedTimestamp) document.getElementById('lastUpdatedDate').innerText = savedTimestamp;
+            updateMainTable('');
+            generateUpcomingPanels();
+        }
+
+        // Load Expired Data
+        const savedExpiredHeaders = localStorage.getItem('expiredHeaders');
+        const savedExpiredData = localStorage.getItem('expiredData');
+        const savedExpiredTimestamp = localStorage.getItem('expiredTimestamp');
+        
+        if (savedExpiredHeaders && savedExpiredData) {
+            expiredHeaders = JSON.parse(savedExpiredHeaders);
+            expiredData = JSON.parse(savedExpiredData);
+            if (savedExpiredTimestamp) document.getElementById('expiredLastUpdatedDate').innerText = savedExpiredTimestamp;
+            updateExpiredTable('');
+        }
+    }
+
+    // Boot Up
+    document.addEventListener("DOMContentLoaded", function() {
+        loadFromLocalStorage();
+    });
+
+</script>
+</body>
+</html>
